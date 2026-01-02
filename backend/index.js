@@ -135,15 +135,14 @@ async function run() {
             res.send(result);
         });
 
-        // --- *** FIXED UPDATE USER ROUTE (CRITICAL FIX) *** ---
-        // Ye naya code hai jo data delete nahi hone dega
+       
         app.put('/update-user/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const body = req.body; // Frontend se aaya data
             const filter = { _id: new ObjectId(id) };
             const options = { upsert: true };
             
-            // Hum sirf wahi update karenge jo frontend ne bheja hai
+         
             const updateDoc = {
                 $set: {}
             };
@@ -368,7 +367,7 @@ async function run() {
                         as: "instructor"
                     }
                 },
-                // --- NEW FIX: Filter out deleted instructors ---
+               
                 {
                     $match: {
                         "instructor": { $ne: [] } // Agar instructor empty hai to hata do
