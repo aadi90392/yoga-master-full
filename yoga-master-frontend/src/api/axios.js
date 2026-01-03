@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
- baseURL: "http://localhost:5000"
+ baseURL: "https://yoga-master-api-uiu6.onrender.com"
 });
 
 // Request Interceptor: Har request me Token add karega
