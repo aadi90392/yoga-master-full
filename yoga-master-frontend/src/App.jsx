@@ -9,8 +9,12 @@ import Navbar from './components/Navbar';
 // Public Pages
 import Home from './pages/Home';
 import Classes from './pages/Classes';
+import Instructors from './pages/Instructors'; // Public Instructor List
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Teach from './pages/Teach'; // Apply to be Instructor
+
+// User Pages
 import Cart from './pages/Cart';
 import Payment from './pages/Payment';
 
@@ -18,9 +22,11 @@ import Payment from './pages/Payment';
 import DashboardLayout from './pages/dashboard/DashboardLayout';
 import MyClasses from './pages/dashboard/MyClasses';
 import ClassDetails from './pages/dashboard/ClassDetails';
-import PaymentHistory from './pages/dashboard/PaymentHistory'; // <--- NEW IMPORT
+import PaymentHistory from './pages/dashboard/PaymentHistory';
+import UserProfile from './pages/dashboard/UserProfile'; // <--- NEW PROFILE PAGE
 
 // Instructor Pages
+import InstructorHome from './pages/dashboard/InstructorHome';
 import AddClass from './pages/dashboard/AddClass';
 import InstructorClasses from './pages/dashboard/InstructorClasses';
 import UpdateClass from './pages/dashboard/UpdateClass';
@@ -28,117 +34,100 @@ import UpdateClass from './pages/dashboard/UpdateClass';
 // Admin Pages
 import ManageClasses from './pages/dashboard/ManageClasses';
 import ManageUsers from './pages/dashboard/ManageUsers';
+import InstructorRequests from './pages/dashboard/InstructorRequests';
 
-// --- 1. PRIVATE ROUTE (General Login Check) ---
+// --- ROUTE GUARDS ---
 const PrivateRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" replace />;
+    const token = localStorage.getItem('token');
+    return token ? children : <Navigate to="/login" replace />;
 };
 
-// --- 2. INSTRUCTOR ROUTE (Role Check) ---
 const InstructorRoute = ({ children }) => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  const token = localStorage.getItem('token');
-  if (!token || user?.role !== 'instructor') {
-    return <Navigate to="/" replace />;
-  }
-  return children;
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    if (!token || user?.role !== 'instructor') {
+        return <Navigate to="/" replace />;
+    }
+    return children;
 };
 
-// --- 3. ADMIN ROUTE (Role Check) ---
 const AdminRoute = ({ children }) => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  const token = localStorage.getItem('token');
-  if (!token || user?.role !== 'admin') {
-    return <Navigate to="/" replace />;
-  }
-  return children;
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    if (!token || user?.role !== 'admin') {
+        return <Navigate to="/" replace />;
+    }
+    return children;
 };
 
 function App() {
-  return (
-    <Router>
-      <div className="min-h-screen bg-white font-sans text-gray-900">
-        
-        {/* Notifications */}
-        <ToastContainer position="top-right" autoClose={3000} />
-        
-        <Routes>
-          {/* --- PUBLIC ROUTES --- */}
-          <Route path="/" element={<><Navbar /><Home /></>} />
-          <Route path="/classes" element={<><Navbar /><Classes /></>} />
-          <Route path="/login" element={<><Navbar /><Login /></>} />
-          <Route path="/signup" element={<><Navbar /><Signup /></>} />
-          
-          {/* --- PROTECTED USER ROUTES --- */}
-          <Route path="/cart" element={
-            <PrivateRoute>
-              <Navbar />
-              <Cart />
-            </PrivateRoute>
-          } />
-          
-          <Route path="/payment" element={
-            <PrivateRoute>
-              <Navbar />
-              <Payment />
-            </PrivateRoute>
-          } />
+    return (
+        <Router>
+            <div className="min-h-screen bg-white font-sans text-gray-900">
+                <ToastContainer position="top-right" autoClose={3000} />
+                
+                <Routes>
+                    {/* --- PUBLIC ROUTES --- */}
+                    <Route path="/" element={<><Navbar /><Home /></>} />
+                    <Route path="/classes" element={<><Navbar /><Classes /></>} />
+                    <Route path="/instructors" element={<><Navbar /><Instructors /></>} />
+                    <Route path="/login" element={<><Navbar /><Login /></>} />
+                    <Route path="/signup" element={<><Navbar /><Signup /></>} />
+                    
+                    {/* Apply for Instructor */}
+                    <Route path="/teach" element={
+                        <PrivateRoute><Navbar /><Teach /></PrivateRoute>
+                    } />
+                    
+                    {/* --- USER ROUTES --- */}
+                    <Route path="/cart" element={
+                        <PrivateRoute><Navbar /><Cart /></PrivateRoute>
+                    } />
+                    <Route path="/payment" element={
+                        <PrivateRoute><Navbar /><Payment /></PrivateRoute>
+                    } />
 
-          {/* --- DASHBOARD SECTION --- */}
-          <Route path="/dashboard" element={
-            <PrivateRoute>
-              <DashboardLayout />
-            </PrivateRoute>
-          }>
-             {/* 1. Student Routes (Common) */}
-             <Route path="my-classes" element={<MyClasses />} />
-             <Route path="class/:id" element={<ClassDetails />} /> 
-             
-             {/* Payment History Route (NEW) */}
-             <Route path="payment-history" element={<PaymentHistory />} />
+                    {/* --- DASHBOARD SECTION --- */}
+                    <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
+                        
+                        {/* Common for All Logged In Users */}
+                        <Route path="user-profile" element={<UserProfile />} />
 
-             {/* 2. Instructor Routes */}
-             <Route path="add-class" element={
-               <InstructorRoute>
-                 <AddClass />
-               </InstructorRoute>
-             } />
-             
-             {/* Instructor: My Uploaded Classes */}
-             <Route path="instructor-classes" element={
-               <InstructorRoute>
-                 <InstructorClasses />
-               </InstructorRoute>
-             } />
+                        {/* Student Routes */}
+                        <Route path="my-classes" element={<MyClasses />} />
+                        <Route path="class/:id" element={<ClassDetails />} /> 
+                        <Route path="payment-history" element={<PaymentHistory />} />
 
-             {/* Instructor: Update Class Route */}
-             <Route path="update-class/:id" element={
-               <InstructorRoute>
-                 <UpdateClass />
-               </InstructorRoute>
-             } />
+                        {/* Instructor Routes */}
+                        <Route path="instructor-home" element={
+                            <InstructorRoute><InstructorHome /></InstructorRoute>
+                        } />
+                        <Route path="add-class" element={
+                            <InstructorRoute><AddClass /></InstructorRoute>
+                        } />
+                        <Route path="instructor-classes" element={
+                            <InstructorRoute><InstructorClasses /></InstructorRoute>
+                        } />
+                        <Route path="update-class/:id" element={
+                            <InstructorRoute><UpdateClass /></InstructorRoute>
+                        } />
 
-             {/* 3. Admin Routes */}
-             <Route path="manage-classes" element={
-               <AdminRoute>
-                 <ManageClasses />
-               </AdminRoute>
-             } />
-             
-             {/* Admin: Manage Users */}
-             <Route path="manage-users" element={
-               <AdminRoute>
-                 <ManageUsers />
-               </AdminRoute>
-             } />
+                        {/* Admin Routes */}
+                        <Route path="manage-classes" element={
+                            <AdminRoute><ManageClasses /></AdminRoute>
+                        } />
+                        <Route path="manage-users" element={
+                            <AdminRoute><ManageUsers /></AdminRoute>
+                        } />
+                        <Route path="manage-applications" element={
+                            <AdminRoute><InstructorRequests /></AdminRoute>
+                        } />
 
-          </Route>
-
-        </Routes>
-      </div>
-    </Router>
-  );
+                    </Route>
+                </Routes>
+            </div>
+        </Router>
+    );
 }
 
 export default App;
