@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Leaf, LogOut, ShoppingCart, LayoutDashboard } from 'lucide-react'; // LayoutDashboard import karo
+import { Leaf, LogOut, ShoppingCart, LayoutDashboard, Menu, X } from 'lucide-react'; 
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation(); 
   const [user, setUser] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // State for mobile menu
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -14,6 +15,8 @@ const Navbar = () => {
     } else {
       setUser(null);
     }
+    // Close mobile menu whenever route changes
+    setIsMobileMenuOpen(false);
   }, [location]); 
 
   const handleLogout = () => {
@@ -34,22 +37,20 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           
-          {/* LOGO */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="bg-green-100 p-2 rounded-full group-hover:bg-green-200 transition">
-                <Leaf className="h-6 w-6 text-green-700" />
+          {/* --- LEFT: LOGO --- */}
+          <Link to="/" className="flex items-center gap-2 group z-50">
+            <div className="bg-green-100 p-1.5 sm:p-2 rounded-full group-hover:bg-green-200 transition">
+                <Leaf className="h-5 w-5 sm:h-6 sm:w-6 text-green-700" />
             </div>
-            <span className="text-xl font-extrabold text-gray-800 tracking-tight">
+            <span className="text-lg sm:text-xl font-extrabold text-gray-800 tracking-tight">
               Yoga<span className="text-green-600">Master</span>
             </span>
           </Link>
 
-          {/* LINKS */}
+          {/* --- CENTER: DESKTOP LINKS (Hidden on Mobile) --- */}
           <div className="hidden md:flex space-x-8">
             <Link to="/" className="text-gray-600 font-medium hover:text-green-600 transition">Home</Link>
             <Link to="/classes" className="text-gray-600 font-medium hover:text-green-600 transition">Classes</Link>
-            
-            {/* AGAR USER LOGIN HAI, TO DASHBOARD LINK DIKHAO */}
             {user && (
               <Link to="/dashboard/my-classes" className="text-gray-600 font-medium hover:text-green-600 transition">
                 Dashboard
@@ -57,12 +58,10 @@ const Navbar = () => {
             )}
           </div>
 
-          {/* AUTH SECTION */}
-          <div>
+          {/* --- RIGHT: DESKTOP AUTH (Hidden on Mobile) --- */}
+          <div className="hidden md:flex items-center">
             {user ? (
               <div className="flex items-center gap-6">
-                
-                {/* Dashboard Icon (Mobile/Desktop Quick Access) */}
                 <Link to="/dashboard/my-classes" className="text-gray-500 hover:text-green-600" title="Go to Dashboard">
                     <LayoutDashboard size={22} />
                 </Link>
@@ -74,12 +73,7 @@ const Navbar = () => {
 
                 <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                     <div className="w-10 h-10 rounded-full border-2 border-green-500 overflow-hidden">
-                        <img 
-                          src={getProfileImage()} 
-                          className="w-full h-full object-cover"
-                          alt="User"
-                          onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=16a34a&color=fff&bold=true`;}} 
-                        />
+                        <img src={getProfileImage()} className="w-full h-full object-cover" alt="User" />
                     </div>
                 </div>
 
@@ -94,8 +88,65 @@ const Navbar = () => {
               </div>
             )}
           </div>
+
+          {/* --- MOBILE: TOGGLE BUTTON (Visible only on small screens) --- */}
+          <div className="md:hidden flex items-center gap-4">
+            {/* Show Cart on Mobile Top Bar if logged in */}
+            {user && (
+               <Link to="/cart" className="relative text-gray-600">
+                  <ShoppingCart size={22} />
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] w-3.5 h-3.5 flex items-center justify-center rounded-full border border-white">!</span>
+               </Link>
+            )}
+
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+              className="text-gray-600 hover:text-green-600 focus:outline-none"
+            >
+              {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* --- MOBILE MENU DROPDOWN --- */}
+      {/* This renders only when hamburger is clicked */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden absolute top-16 left-0 w-full bg-white border-b border-gray-100 shadow-xl flex flex-col p-4 space-y-4 animate-in slide-in-from-top-5 duration-200">
+          
+          {/* Navigation Links */}
+          <Link to="/" className="text-gray-700 font-medium py-2 border-b border-gray-50 hover:text-green-600">Home</Link>
+          <Link to="/classes" className="text-gray-700 font-medium py-2 border-b border-gray-50 hover:text-green-600">Classes</Link>
+          
+          {user ? (
+            <>
+              {/* Logged In Mobile Options */}
+              <Link to="/dashboard/my-classes" className="text-gray-700 font-medium py-2 border-b border-gray-50 hover:text-green-600 flex items-center gap-2">
+                <LayoutDashboard size={18} /> Dashboard
+              </Link>
+              
+              <div className="flex items-center gap-3 py-2">
+                 <img src={getProfileImage()} className="w-8 h-8 rounded-full border border-green-500" alt="User" />
+                 <span className="font-semibold text-gray-800">{user.name}</span>
+              </div>
+
+              <button onClick={handleLogout} className="flex items-center gap-2 text-red-500 font-medium py-2">
+                 <LogOut size={18} /> Logout
+              </button>
+            </>
+          ) : (
+            /* Logged Out Mobile Options */
+            <div className="flex flex-col gap-3 mt-2">
+              <Link to="/login" className="w-full text-center text-gray-600 font-bold py-3 border border-gray-200 rounded-lg">
+                Log In
+              </Link>
+              <Link to="/signup" className="w-full text-center bg-green-600 text-white font-bold py-3 rounded-lg shadow-md">
+                Join Now
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 };
