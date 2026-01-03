@@ -4,16 +4,16 @@ const cors = require('cors');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.PAYMENT_SECRET);
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs'); // <--- IMPORTED BCRYPT
+const bcrypt = require('bcryptjs'); // Security ke liye
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const port = process.env.PORT || 5000;
 
-// middleware
+// --- MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
 
-// --- MIDDLEWARE: VERIFY JWT ---
+// --- VERIFY JWT TOKEN ---
 const verifyJWT = (req, res, next) => {
     const authorization = req.headers.authorization;
     if (!authorization) {
@@ -44,7 +44,7 @@ async function run() {
     try {
         await client.connect();
 
-        // --- COLLECTIONS ---
+        // --- DATABASE COLLECTIONS ---
         const database = client.db("yoga-master");
         const userCollection = database.collection("users");
         const classesCollection = database.collection("classes");
@@ -54,21 +54,21 @@ async function run() {
         const appliedCollection = database.collection("applied");
 
         // =========================================================================
-        // AUTHENTICATION ROUTES (SECURED)
+        // 1. AUTHENTICATION ROUTES
         // =========================================================================
 
-        // 1. SIGNUP (With Password Hashing & Duplicate Check)
+        // SIGNUP
         app.post('/new-user', async (req, res) => {
             const user = req.body;
             
-            // Check if email already exists
+            // 1. Duplicate Check
             const query = { email: user.email };
             const existingUser = await userCollection.findOne(query);
             if (existingUser) {
                 return res.send({ message: 'User already exists', insertedId: null });
             }
 
-            // Hash Password before saving
+            // 2. Hash Password
             const hashedPassword = await bcrypt.hash(user.password, 10);
             const newUser = { ...user, password: hashedPassword };
 
@@ -76,17 +76,16 @@ async function run() {
             res.send(result);
         });
 
-        // 2. LOGIN (With Password Comparison)
+        // LOGIN
         app.post('/api/login', async (req, res) => {
             const { email, password } = req.body;
             
-            // Find user by email
             const user = await userCollection.findOne({ email: email });
             if (!user) {
                 return res.status(404).send({ message: "User not found" });
             }
 
-            // Compare Hashed Password
+            // Verify Password
             const isPasswordValid = await bcrypt.compare(password, user.password);
             if (!isPasswordValid) {
                 return res.status(401).send({ message: "Invalid Password" });
@@ -99,7 +98,6 @@ async function run() {
                 { expiresIn: '24h' }
             );
             
-            // Send user info (Exclude password)
             const userInfo = {
                 _id: user._id,
                 name: user.name,
@@ -111,8 +109,7 @@ async function run() {
             res.send({ token, user: userInfo });
         });
 
-
-        // --- ROLE VERIFICATION MIDDLEWARES ---
+        // --- ROLE MIDDLEWARES ---
         const verifyAdmin = async (req, res, next) => {
             const email = req.decoded.email;
             const query = { email: email };
@@ -136,7 +133,48 @@ async function run() {
         };
 
         // =========================================================================
-        // USER MANAGEMENT
+        // 2. PUBLIC ROUTES (INSTRUCTORS & CLASSES)
+        // =========================================================================
+
+        // **FIXED ROUTE: Get All Instructors**
+        app.get('/instructors', async (req, res) => {
+            const result = await userCollection.find({ role: 'instructor' }).toArray();
+            res.send(result);
+        });
+
+        app.get('/popular-instructors', async (req, res) => {
+            const pipeline = [
+                { $group: { _id: "$instructorEmail", totalEnrolled: { $sum: "$totalEnrolled" } } },
+                { $lookup: { from: "users", localField: "_id", foreignField: "email", as: "instructor" } },
+                { $match: { "instructor": { $ne: [] } } },
+                { $project: { _id: 0, instructor: { $arrayElemAt: ["$instructor", 0] }, totalEnrolled: 1 } },
+                { $sort: { totalEnrolled: -1 } },
+                { $limit: 6 }
+            ];
+            const result = await classesCollection.aggregate(pipeline).toArray();
+            res.send(result);
+        });
+
+        app.get('/classes', async (req, res) => {
+            const query = { status: 'approved' };
+            const result = await classesCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        app.get('/popular_classes', async (req, res) => {
+            const result = await classesCollection.find().sort({ totalEnrolled: -1 }).limit(6).toArray();
+            res.send(result);
+        });
+
+        app.get('/class/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await classesCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        // =========================================================================
+        // 3. USER & DASHBOARD MANAGEMENT
         // =========================================================================
 
         app.get('/users', async (req, res) => {
@@ -165,14 +203,12 @@ async function run() {
             const options = { upsert: true };
             const updateDoc = { $set: {} };
 
-            // Security: Only Admin can change Role
             if (body.option) {
                 if (req.decoded.role === 'admin') {
                     updateDoc.$set.role = body.option;
                 }
             }
 
-            // Normal Profile Updates
             if (body.name) updateDoc.$set.name = body.name;
             if (body.phone) updateDoc.$set.phone = body.phone;
             if (body.address) updateDoc.$set.address = body.address;
@@ -185,7 +221,7 @@ async function run() {
         });
 
         // =========================================================================
-        // INSTRUCTOR APPLICATIONS
+        // 4. INSTRUCTOR APPLICATION LOGIC
         // =========================================================================
 
         app.post('/as-instructor', verifyJWT, async (req, res) => {
@@ -202,7 +238,6 @@ async function run() {
             res.send(result);
         });
         
-        // Single user application status check
         app.get('/applied-instructors/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
             const result = await appliedCollection.findOne({ email });
@@ -225,7 +260,7 @@ async function run() {
         });
 
         // =========================================================================
-        // CLASSES MANAGEMENT
+        // 5. CLASS MANAGEMENT (INSTRUCTOR & ADMIN)
         // =========================================================================
 
         app.post('/new-class', verifyJWT, verifyInstructor, async (req, res) => {
@@ -234,14 +269,6 @@ async function run() {
             res.send(result);
         });
 
-        // All Approved Classes (Public)
-        app.get('/classes', async (req, res) => {
-            const query = { status: 'approved' };
-            const result = await classesCollection.find(query).toArray();
-            res.send(result);
-        });
-
-        // Instructor Specific Classes
         app.get('/classes/:email', verifyJWT, verifyInstructor, async (req, res) => {
             const email = req.params.email;
             const query = { instructorEmail: email };
@@ -249,13 +276,11 @@ async function run() {
             res.send(result);
         });
 
-        // Admin: Manage All Classes
         app.get('/class-manage', async (req, res) => {
             const result = await classesCollection.find().toArray();
             res.send(result);
         });
 
-        // Admin: Approve/Reject Class
         app.patch('/change-status/:id', verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const { status, reason } = req.body;
@@ -265,15 +290,6 @@ async function run() {
             res.send(result);
         });
 
-        // Get Single Class
-        app.get('/class/:id', async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) };
-            const result = await classesCollection.find(query).toArray();
-            res.send(result);
-        });
-
-        // Update Class Details
         app.put('/update-class/:id', verifyJWT, verifyInstructor, async (req, res) => {
             const id = req.params.id;
             const updateClass = req.body;
@@ -285,14 +301,13 @@ async function run() {
                     price: updateClass.price,
                     availableSeats: parseInt(updateClass.availableSeats),
                     videoLink: updateClass.videoLink,
-                    status: 'pending' // Reset status on update
+                    status: 'pending'
                 }
             };
             const result = await classesCollection.updateOne(filter, updateDoc);
             res.send(result);
         });
         
-        // Admin: Delete Class
         app.delete('/delete-class/:id', verifyJWT, verifyAdmin, async (req, res) => {
              const id = req.params.id;
              const query = { _id: new ObjectId(id) };
@@ -300,26 +315,8 @@ async function run() {
              res.send(result);
         });
 
-        app.get('/popular_classes', async (req, res) => {
-            const result = await classesCollection.find().sort({ totalEnrolled: -1 }).limit(6).toArray();
-            res.send(result);
-        });
-
-        app.get('/popular-instructors', async (req, res) => {
-            const pipeline = [
-                { $group: { _id: "$instructorEmail", totalEnrolled: { $sum: "$totalEnrolled" } } },
-                { $lookup: { from: "users", localField: "_id", foreignField: "email", as: "instructor" } },
-                { $match: { "instructor": { $ne: [] } } },
-                { $project: { _id: 0, instructor: { $arrayElemAt: ["$instructor", 0] }, totalEnrolled: 1 } },
-                { $sort: { totalEnrolled: -1 } },
-                { $limit: 6 }
-            ];
-            const result = await classesCollection.aggregate(pipeline).toArray();
-            res.send(result);
-        });
-
         // =========================================================================
-        // CART ROUTES
+        // 6. CART & PAYMENT LOGIC
         // =========================================================================
 
         app.post('/add-to-cart', verifyJWT, async (req, res) => {
@@ -341,14 +338,10 @@ async function run() {
 
         app.delete('/delete-cart-item/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
-            const query = { classId: id }; // Deleting by classId from cart
+            const query = { classId: id };
             const result = await cartCollection.deleteOne(query);
             res.send(result);
         });
-
-        // =========================================================================
-        // PAYMENT ROUTES
-        // =========================================================================
 
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body;
@@ -367,12 +360,9 @@ async function run() {
             const userEmail = paymentInfo.userEmail;
             
             const classesQuery = { _id: { $in: classesId.map(id => new ObjectId(id)) } };
-            const classes = await classesCollection.find(classesQuery).toArray();
-
-            // 1. Add to Payment History
+            
             const paymentResult = await paymentCollection.insertOne(paymentInfo);
 
-            // 2. Add to Enrolled Collection
             const newEnrolledData = {
                 userEmail: userEmail,
                 classesId: classesId.map(id => new ObjectId(id)),
@@ -381,16 +371,11 @@ async function run() {
             };
             const enrolledResult = await enrolledCollection.insertOne(newEnrolledData);
 
-            // 3. Delete from Cart
             const cartQuery = { classId: { $in: classesId }, userMail: userEmail };
             const deletedResult = await cartCollection.deleteMany(cartQuery);
 
-            // 4. Update Class Seats & Enrolled Count
             const updatedDoc = {
-                $inc: {
-                    totalEnrolled: 1,
-                    availableSeats: -1
-                }
+                $inc: { totalEnrolled: 1, availableSeats: -1 }
             };
             const updatedResult = await classesCollection.updateMany(classesQuery, updatedDoc);
 
@@ -419,7 +404,7 @@ async function run() {
         });
 
         // =========================================================================
-        // STATS ROUTES
+        // 7. STATS & ANALYTICS
         // =========================================================================
 
         app.get('/instructor-stats/:email', verifyJWT, verifyInstructor, async (req, res) => {
@@ -459,7 +444,7 @@ async function run() {
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
     } finally {
-        // await client.close(); // Keep connection open
+        // Connection stays open
     }
 }
 
