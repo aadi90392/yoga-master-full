@@ -107,12 +107,37 @@ Frontend runs on:
 ---
 
 ## 📸 Project Screenshots
-- Home Page  
-- Instructor Dashboard  
-- Course Details Page  
-- Admin Panel  
 
-_(Add screenshots here)_
+- Home Page  
+<img width="1919" height="909" alt="image" src="https://github.com/user-attachments/assets/3c7cca58-7b7a-472c-95bb-ab338f311a03" />
+
+<img width="1918" height="964" alt="image" src="https://github.com/user-attachments/assets/10e0a5a6-4a80-4e27-ba08-1e098b3a3e71" />
+
+<img width="1916" height="966" alt="image" src="https://github.com/user-attachments/assets/483b758a-6828-4391-809a-18721a0df18f" />
+
+- Instructor Dashboard
+<img width="1919" height="980" alt="image" src="https://github.com/user-attachments/assets/3b8ee822-eb18-4c1a-b9ff-c077a8ffbb30" />
+
+<img width="1919" height="971" alt="image" src="https://github.com/user-attachments/assets/4ae73b17-44e8-4f42-bc9b-cdfd8bedb0bb" />
+<img width="1917" height="979" alt="image" src="https://github.com/user-attachments/assets/3d76e9a1-c167-4ea4-89b7-73547e7b2229" />
+
+
+- Course Details Page
+  <img width="1919" height="977" alt="image" src="https://github.com/user-attachments/assets/20682184-3024-41f2-8f54-2c50f7562c72" />
+  <img width="1919" height="911" alt="image" src="https://github.com/user-attachments/assets/670ef978-6721-43b4-b0f8-4c3e68e305e4" />
+<img width="1919" height="966" alt="image" src="https://github.com/user-attachments/assets/6f48e728-7a27-459d-b9ce-675363c1bd5e" />
+
+<img width="1919" height="970" alt="image" src="https://github.com/user-attachments/assets/a958ecff-7a38-4ceb-9a5e-3b19e1b61d74" />
+<img width="1911" height="910" alt="image" src="https://github.com/user-attachments/assets/9173e93a-b5c8-42f6-a538-58b1feb5cede" />
+
+- Admin Panel
+- <img width="1918" height="912" alt="image" src="https://github.com/user-attachments/assets/7d922908-b966-4e27-ba01-722a79334ac0" />
+
+- <img width="1919" height="972" alt="image" src="https://github.com/user-attachments/assets/0b3de2f3-3d82-47ca-9356-bcf5b7ecffcd" />
+<img width="1919" height="911" alt="image" src="https://github.com/user-attachments/assets/66eea951-e7f7-4928-a145-f13a6af8093b" />
+
+<img width="1810" height="669" alt="image" src="https://github.com/user-attachments/assets/171d1f00-fb1f-4b87-ac64-135100431973" />
+
 
 ---
 
