@@ -4,105 +4,121 @@
 
 Built with the **MERN Stack** (MongoDB, Express, React, Node.js) and styled with **Tailwind CSS**.
 
-🔗 **Live Demo:** (https://yoga-master-full.vercel.app/)
-🖥️ **Backend API:** (https://yoga-master-api-uiu6.onrender.com/)
+🔗 **Live Demo:** https://yoga-master-full.vercel.app/  
+🖥️ **Backend API:** https://yoga-master-api-uiu6.onrender.com/
 
 ---
 
 ## 🚀 Features
 
 ### 👨‍🎓 For Students
-- **Browse Classes:** View top-rated yoga classes with details.
-- **Secure Payments:** Integrated **Stripe Payment Gateway** for secure course enrollment.
-- **Dashboard:** Track enrolled classes and payment history.
-- **Course Player:** Watch video lessons (Integrated video player).
-- **Cart System:** Add multiple courses to cart and checkout.
+- Browse top-rated yoga classes with full details
+- Secure enrollment using **Stripe Payment Gateway**
+- Personal dashboard for enrolled classes & payment history
+- Video course player
+- Cart system for multiple course checkout
 
 ### 🧘‍♂️ For Instructors
-- **Instructor Dashboard:** View total revenue, total students, and sales charts (using **Recharts**).
-- **Course Creation:** Upload video courses with multiple chapters (Cloudinary Integration).
-- **Manage Classes:** Update or delete existing classes.
-- **Status Tracking:** See if the admin has approved or rejected the course.
+- Instructor dashboard with revenue & student analytics (**Recharts**)
+- Upload video courses with multiple chapters
+- Cloudinary integration for videos & images
+- Update or delete classes
+- Track course approval status
 
 ### 🛡️ For Admins
-- **User Management:** Promote users to Instructors or Admins; Demote or Delete users.
-- **Class Management:** Approve or Deny new course submissions from instructors.
-- **Application Review:** Review applications from users who want to become instructors.
+- Manage users (Promote / Demote / Delete)
+- Approve or reject instructor courses
+- Review instructor applications
+- Full platform control
 
 ---
 
 ## 🛠️ Tech Stack
 
-**Frontend:**
-- ⚛️ **React.js** (Vite) - Fast and modern UI library.
-- 🎨 **Tailwind CSS v4** - Utility-first styling.
-- 🚦 **React Router DOM v7** - For seamless navigation.
-- ⚡ **TanStack Query (React Query)** - For efficient server state management.
-- 💳 **Stripe.js** - Payment processing.
-- 📊 **Recharts** - For visualizing instructor data.
-- 🔔 **React Toastify** - For notifications.
+### Frontend
+- ⚛️ React.js (Vite)
+- 🎨 Tailwind CSS v4
+- 🚦 React Router DOM v7
+- ⚡ TanStack Query
+- 💳 Stripe.js
+- 📊 Recharts
+- 🔔 React Toastify
 
-**Backend:**
-- 🟢 **Node.js & Express.js** - RESTful API.
-- 🍃 **MongoDB & Mongoose** - Database and Object Modeling.
-- 🔐 **JWT (JSON Web Tokens)** - Secure authentication.
-- ☁️ **Cloudinary** - Video and Image storage.
+### Backend
+- 🟢 Node.js & Express.js
+- 🍃 MongoDB & Mongoose
+- 🔐 JWT Authentication
+- ☁️ Cloudinary
 
 ---
 
 ## ⚙️ Environment Variables
 
-To run this project locally, you will need to add the following environment variables to your `.env` files.
+### 1️⃣ Backend Setup (`/backend/.env`)
 
-### Backend (`/backend/.env`)
+Create a `.env` file inside the `backend` folder:
+
 ```env
 PORT=5000
-DB_USER=your_db_username
-DB_PASS=your_db_password
+DB_USER=your_mongodb_username
+DB_PASS=your_mongodb_password
 ACCESS_TOKEN_SECRET=your_jwt_secret_key
 STRIPE_SECRET_KEY=your_stripe_secret_key
-Frontend (/yoga-master-frontend/.env)
-Code snippet
+```
 
+### 2️⃣ Frontend Setup (`/yoga-master-frontend/.env`)
+
+Create a `.env` file inside the `yoga-master-frontend` folder:
+
+```env
 VITE_API_URL=http://localhost:5000
 VITE_PAYMENT_GATEWAY_PK=your_stripe_publishable_key
 VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
 VITE_CLOUDINARY_PRESET=your_upload_preset
-🏃‍♂️ Run Locally
-Clone the project
+```
 
-Bash
+---
 
-git clone [https://github.com/your-username/yoga-master.git](https://github.com/your-username/yoga-master.git)
-1. Backend Setup
-Go to the backend directory
+## 🏃‍♂️ Run Locally
 
-Bash
+### 1️⃣ Clone the Repository
+```bash
+git clone https://github.com/aadi90392/yoga-master-full.git
+```
 
+### 2️⃣ Backend Setup
+```bash
 cd backend
-Install dependencies
-
-Bash
-
 npm install
-Start the server
-
-Bash
-
 npm start
-2. Frontend Setup
-Open a new terminal and go to the frontend directory
+```
+Backend runs on:  
+👉 http://localhost:5000
 
-Bash
-
+### 3️⃣ Frontend Setup
+```bash
 cd yoga-master-frontend
-Install dependencies
-
-Bash
-
 npm install
-Start the React app
-
-Bash
-
 npm run dev
+```
+Frontend runs on:  
+👉 http://localhost:5173
+
+---
+
+## 📸 Project Screenshots
+- Home Page  
+- Instructor Dashboard  
+- Course Details Page  
+- Admin Panel  
+
+_(Add screenshots here)_
+
+---
+
+## 👤 Author
+
+**Aditya Upadhyay**  
+GitHub: https://github.com/aadi90392  
+
+Made with ❤️ by Aditya
