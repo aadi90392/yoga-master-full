@@ -1,113 +1,221 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../../api/axios';
-import { ArrowLeft, User, Calendar, Clock, PlayCircle } from 'lucide-react';
+import { ArrowLeft, PlayCircle, Lock, CheckCircle, Video, ShoppingCart } from 'lucide-react';
 
 const ClassDetails = () => {
-  const { id } = useParams(); 
-  const [classData, setClassData] = useState(null);
-  const [loading, setLoading] = useState(true);
+    const { id } = useParams();
+    const user = JSON.parse(localStorage.getItem('user'));
+    const [classData, setClassData] = useState(null);
+    const [isPurchased, setIsPurchased] = useState(false);
+    const [activeVideo, setActiveVideo] = useState(null); // Jo video player me chalega
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchClassDetails = async () => {
-      try {
-        // Backend se class ka data laao
-        const res = await api.get(`/class/${id}`);
-        // Backend array return karta hai, isliye pehla item lo
-        setClassData(res.data[0]); 
-      } catch (error) {
-        console.error("Error fetching class details:", error);
-      } finally {
-        setLoading(false);
-      }
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // 1. Class Data Fetch karo
+                const resClass = await api.get(`/class/${id}`);
+                const cls = resClass.data[0];
+                setClassData(cls);
+                
+                // --- LOGIC FIX HERE ---
+                // Priority 1: Instructor ka uploaded Trailer (Preview Video)
+                // Priority 2: Pehla Chapter ka video
+                // Priority 3: Purana videoLink field (Backward compatibility)
+                const defaultVideo = cls.previewVideo || cls.chapters?.[0]?.video || cls.videoLink;
+                setActiveVideo(defaultVideo); 
+
+                // 2. Check Purchase Status (Agar user logged in hai)
+                if (user?.email) {
+                    const resEnrolled = await api.get(`/enrolled-classes/${user.email}`);
+                    // Check karo agar ye class ID enrolled list me hai
+                    const enrolledIds = resEnrolled.data.map(item => item.classes._id);
+                    if (enrolledIds.includes(id)) {
+                        setIsPurchased(true);
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [id, user?.email]);
+
+    // Handle Chapter Click
+    const handleChapterClick = (chapter, index) => {
+        // Unlock Logic: 
+        // 1. Agar course khareeda hua hai -> Sab unlocked
+        // 2. Agar chapter "Free" mark hai -> Unlocked
+        // 3. Agar user Admin ya Instructor hai -> Unlocked
+        const isUnlocked = isPurchased || chapter.isFree || user?.role === 'admin' || user?.email === classData.instructorEmail;
+
+        if (isUnlocked) {
+            setActiveVideo(chapter.video);
+        } else {
+            alert("🔒 This chapter is locked! Please purchase the full course to access.");
+        }
     };
-    fetchClassDetails();
-  }, [id]);
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-green-600 font-bold text-xl">Loading Class...</div>;
-  if (!classData) return <div className="h-screen flex items-center justify-center text-red-500 font-bold text-xl">Class not found!</div>;
+    if (loading) return <div className="text-center py-20 font-bold text-green-600">Loading Course Details...</div>;
+    if (!classData) return <div className="text-center py-20 font-bold text-red-500">Class not found!</div>;
 
-  return (
-    <div className="max-w-6xl mx-auto bg-white min-h-screen pb-10">
-      
-      {/* --- TOP BAR: BACK BUTTON --- */}
-      <div className="pt-6 px-6 mb-4">
-        <Link to="/dashboard/my-classes" className="inline-flex items-center gap-2 text-gray-600 hover:text-green-600 transition font-medium bg-gray-50 px-4 py-2 rounded-full border border-gray-200 hover:bg-green-50">
-             <ArrowLeft size={18} /> Back to My Classes
-        </Link>
-      </div>
-
-      {/* --- VIDEO PLAYER SECTION --- */}
-      <div className="mx-6">
-        <div className="bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video border-4 border-gray-100 relative group">
+    return (
+        <div className="max-w-7xl mx-auto p-4 sm:p-8 bg-gray-50 min-h-screen">
             
-            {/* DIRECT VIDEO PLAYER */}
-            <video 
-                src={classData.videoLink} 
-                controls 
-                controlsList="nodownload" // Video download button hata dega
-                className="w-full h-full object-contain"
-                poster={classData.image} // Video load hone se pehle image dikhegi
-            >
-                Your browser does not support the video tag.
-            </video>
+            {/* Back Button */}
+            <Link to={isPurchased ? "/dashboard/my-classes" : "/classes"} className="flex items-center gap-2 text-gray-500 mb-6 hover:text-green-600 transition font-medium">
+                <ArrowLeft size={20}/> {isPurchased ? "Back to Dashboard" : "Back to All Classes"}
+            </Link>
 
-        </div>
-      </div>
-
-      {/* --- CLASS INFO SECTION --- */}
-      <div className="px-8 mt-8 grid lg:grid-cols-3 gap-10">
-        
-        {/* Left Side: Title & Description */}
-        <div className="lg:col-span-2">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">{classData.name}</h1>
-            
-            {/* Metadata Badges */}
-            <div className="flex flex-wrap items-center gap-4 text-sm mb-8">
-                <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1 rounded-full font-semibold border border-green-100">
-                    <User size={16} /> {classData.instructorName}
-                </div>
-                <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-semibold border border-blue-100">
-                    <Clock size={16} /> Duration: Flexible
-                </div>
-                <div className="flex items-center gap-2 bg-purple-50 text-purple-700 px-3 py-1 rounded-full font-semibold border border-purple-100">
-                    <PlayCircle size={16} /> Online Session
-                </div>
-            </div>
-
-            {/* Description Box */}
-            <div className="bg-[#f8f9fa] p-8 rounded-2xl border border-gray-100">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <Calendar className="text-green-600" size={20}/> About this Class
-                </h3>
-                <div className="prose text-gray-600 leading-relaxed whitespace-pre-line">
-                    {classData.description || "No description provided for this class."}
-                </div>
-            </div>
-        </div>
-
-        {/* Right Side: Instructor Card (Optional Extra Info) */}
-        <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 sticky top-10">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Instructor</h3>
-                <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xl">
-                        {classData.instructorName?.charAt(0) || "I"}
+            <div className="grid lg:grid-cols-3 gap-8">
+                
+                {/* --- LEFT SIDE: VIDEO PLAYER & DESCRIPTION --- */}
+                <div className="lg:col-span-2">
+                    {/* Video Player */}
+                    <div className="bg-black aspect-video rounded-2xl overflow-hidden shadow-2xl relative border-4 border-white">
+                        {activeVideo ? (
+                            <video 
+                                key={activeVideo} // Important: URL change hone par player reload karega
+                                src={activeVideo} 
+                                controls 
+                                controlsList="nodownload" // Download button disable
+                                className="w-full h-full object-contain"
+                                autoPlay // Auto play when switched
+                                poster={classData.image} // Thumbnail
+                            >
+                                Your browser does not support the video tag.
+                            </video>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-white">
+                                <p>No video available for preview.</p>
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <p className="font-bold text-gray-800">{classData.instructorName}</p>
-                        <p className="text-xs text-gray-500">{classData.instructorEmail}</p>
+
+                    {/* Class Info */}
+                    <div className="mt-8">
+                        <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 leading-tight">{classData.name}</h1>
+                        
+                        <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
+                            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-bold">
+                                {isPurchased ? "Enrolled" : `$${classData.price}`}
+                            </span>
+                            <span>Instructor: <b>{classData.instructorName}</b></span>
+                            <span>• {classData.totalEnrolled || 0} Students</span>
+                        </div>
+
+                        <div className="mt-6 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                            <h3 className="font-bold text-gray-800 mb-3 text-lg">About this Class</h3>
+                            <p className="text-gray-600 leading-relaxed whitespace-pre-line">
+                                {classData.description}
+                            </p>
+                        </div>
                     </div>
                 </div>
-                <button className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold hover:bg-green-600 transition shadow-lg">
-                    Contact Instructor
-                </button>
+
+                {/* --- RIGHT SIDE: COURSE CONTENT (CHAPTERS) --- */}
+                <div className="lg:col-span-1">
+                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden sticky top-6">
+                        
+                        {/* Header */}
+                        <div className="p-5 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <div>
+                                <h3 className="font-bold text-gray-800">Course Content</h3>
+                                <p className="text-xs text-gray-500 mt-1">{classData.chapters?.length || 0} Lessons</p>
+                            </div>
+                        </div>
+
+                        {/* List of Chapters */}
+                        <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+                            {/* Option 1: Main Trailer (Always Free) */}
+                            {classData.previewVideo && (
+                                <div 
+                                    onClick={() => setActiveVideo(classData.previewVideo)}
+                                    className={`p-4 border-b border-gray-50 flex items-center gap-4 transition cursor-pointer
+                                        ${activeVideo === classData.previewVideo ? 'bg-green-50 border-l-4 border-l-green-600' : 'hover:bg-gray-50'}
+                                    `}
+                                >
+                                    <div className="flex-shrink-0 bg-green-100 p-2 rounded-full">
+                                        <PlayCircle size={20} className="text-green-600" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-sm text-gray-800">Course Trailer</h4>
+                                        <p className="text-xs text-green-600 font-semibold">Free Preview</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Chapters Loop */}
+                            {classData.chapters?.map((chapter, index) => {
+                                // Lock Logic
+                                const isUnlocked = isPurchased || chapter.isFree || user?.role === 'admin' || user?.email === classData.instructorEmail;
+
+                                return (
+                                    <div 
+                                        key={index} 
+                                        onClick={() => handleChapterClick(chapter, index)}
+                                        className={`p-4 border-b border-gray-50 flex items-center gap-4 transition cursor-pointer group
+                                            ${activeVideo === chapter.video ? 'bg-green-50 border-l-4 border-l-green-600' : 'hover:bg-gray-50'}
+                                            ${!isUnlocked ? 'opacity-70' : ''}
+                                        `}
+                                    >
+                                        <div className="flex-shrink-0">
+                                            {isUnlocked ? (
+                                                <div className="bg-gray-100 p-2 rounded-full text-gray-600 group-hover:bg-green-100 group-hover:text-green-600 transition">
+                                                    <PlayCircle size={20} />
+                                                </div>
+                                            ) : (
+                                                <div className="bg-red-50 p-2 rounded-full text-red-400">
+                                                    <Lock size={20} />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-sm text-gray-800 line-clamp-1">{index + 1}. {chapter.title}</h4>
+                                            <p className="text-xs text-gray-500 line-clamp-1">{chapter.description || "No description"}</p>
+                                        </div>
+                                        
+                                        {/* Status Badge */}
+                                        <div className="text-xs">
+                                            {isUnlocked && !isPurchased && chapter.isFree && (
+                                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-bold">Free</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+
+                            {(!classData.chapters || classData.chapters.length === 0) && (
+                                <div className="p-6 text-center text-gray-400 text-sm italic">
+                                    No chapters added yet.
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Buy Button (Footer) */}
+                        {!isPurchased && user?.role === 'user' && (
+                            <div className="p-5 border-t border-gray-100 bg-white">
+                                <div className="text-center mb-3">
+                                    <p className="text-xs text-gray-500">Unlock full access to all chapters</p>
+                                </div>
+                                <Link 
+                                    to="/cart" 
+                                    state={{ cart: [classData], price: classData.price }} // Direct buy logic support if needed
+                                    className="block w-full bg-gray-900 text-white text-center py-3.5 rounded-xl font-bold hover:bg-green-600 transition shadow-lg flex items-center justify-center gap-2"
+                                >
+                                    <ShoppingCart size={18} /> Buy Course for ${classData.price}
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
             </div>
         </div>
-
-      </div>
-    </div>
-  );
+    );
 };
 
 export default ClassDetails;

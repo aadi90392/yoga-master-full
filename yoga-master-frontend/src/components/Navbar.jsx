@@ -31,6 +31,13 @@ const Navbar = () => {
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=16a34a&color=fff&bold=true`;
     };
 
+    // --- NEW: Role Based Route Helper ---
+    const getDashboardRoute = () => {
+        if (user?.role === 'admin') return '/dashboard/manage-users'; // Admin Landing
+        if (user?.role === 'instructor') return '/dashboard/instructor-home'; // Instructor Landing
+        return '/dashboard/my-classes'; // Student Landing
+    };
+
     return (
         <nav className="fixed w-full top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,8 +66,9 @@ const Navbar = () => {
                             </Link>
                         )}
 
-                        {user && (user.role === 'instructor' || user.role === 'admin') && (
-                            <Link to="/dashboard/my-classes" className="text-gray-600 font-medium hover:text-green-600 transition">
+                        {/* Dashboard Link (Logic Fixed) */}
+                        {user && (
+                            <Link to={getDashboardRoute()} className="text-gray-600 font-medium hover:text-green-600 transition">
                                 Dashboard
                             </Link>
                         )}
@@ -70,8 +78,8 @@ const Navbar = () => {
                     <div className="hidden md:flex items-center">
                         {user ? (
                             <div className="flex items-center gap-6">
-                                {/* Dashboard Icon */}
-                                <Link to="/dashboard/my-classes" className="text-gray-500 hover:text-green-600" title="Go to Dashboard">
+                                {/* Dashboard Icon (Logic Fixed) */}
+                                <Link to={getDashboardRoute()} className="text-gray-500 hover:text-green-600" title="Go to Dashboard">
                                     <LayoutDashboard size={22} />
                                 </Link>
 
@@ -82,7 +90,7 @@ const Navbar = () => {
                                     </Link>
                                 )}
 
-                                {/* User Profile (Clickable Avatar) */}
+                                {/* User Profile */}
                                 <Link to="/dashboard/user-profile" className="flex items-center gap-3 pl-4 border-l border-gray-200 hover:opacity-80 transition" title="My Profile">
                                     <div className="w-10 h-10 rounded-full border-2 border-green-500 overflow-hidden">
                                         <img src={getProfileImage()} className="w-full h-full object-cover" alt="User" />
@@ -104,9 +112,9 @@ const Navbar = () => {
                     {/* --- MOBILE: TOGGLE BUTTON --- */}
                     <div className="md:hidden flex items-center gap-4">
                         {user && user.role === 'user' && (
-                             <Link to="/cart" className="relative text-gray-600">
+                            <Link to="/cart" className="relative text-gray-600">
                                 <ShoppingCart size={22} />
-                             </Link>
+                            </Link>
                         )}
 
                         <button 
@@ -135,11 +143,11 @@ const Navbar = () => {
                                 </Link>
                             )}
 
-                            <Link to="/dashboard/my-classes" className="text-gray-700 font-medium py-2 border-b border-gray-50 hover:text-green-600 flex items-center gap-2">
+                            {/* Mobile Dashboard Link (Logic Fixed) */}
+                            <Link to={getDashboardRoute()} className="text-gray-700 font-medium py-2 border-b border-gray-50 hover:text-green-600 flex items-center gap-2">
                                 <LayoutDashboard size={18} /> Dashboard
                             </Link>
                             
-                            {/* Mobile Profile Link */}
                             <Link to="/dashboard/user-profile" className="flex items-center gap-3 py-2 border-b border-gray-50">
                                 <img src={getProfileImage()} className="w-8 h-8 rounded-full border border-green-500" alt="User" />
                                 <span className="font-semibold text-gray-800">{user.name} (Profile)</span>

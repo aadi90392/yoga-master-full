@@ -1,165 +1,196 @@
 import React, { useState } from 'react';
 import api from '../../api/axios';
 import { toast } from 'react-toastify';
-import { UploadCloud, Loader } from 'lucide-react';
+import { UploadCloud, Plus, Trash2, Loader, Video } from 'lucide-react';
 
 const AddClass = () => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false); // Video upload state
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    image: '',
-    price: '',
-    availableSeats: '',
-    videoLink: '', // Yahan ab Cloudinary URL aayega
-    description: '',
-    instructorName: user?.name,
-    instructorEmail: user?.email,
-    status: 'pending',
-    totalEnrolled: 0
-  });
+    const user = JSON.parse(localStorage.getItem('user'));
+    const [loading, setLoading] = useState(false);
+    
+    // Basic Details
+    const [basicInfo, setBasicInfo] = useState({
+        name: '', image: '', price: '', availableSeats: '', description: '',
+        previewVideo: '' // Main Trailer Video
+    });
 
-  // --- CLOUDINARY CONFIG ---
-  const cloudName = "ddix4hkny"; // Apna Cloud Name yahan daalo
-  const uploadPreset = "yoga_preset"; // Apna Preset Name yahan daalo (Unsigned wala)
+    // Chapters State
+    const [chapters, setChapters] = useState([
+        { title: '', description: '', videoUrl: '', videoFile: null, isFree: true } // 1st Chapter Free by default
+    ]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+    // Cloudinary Config
+    const cloudName = "ddix4hkny"; 
+    const uploadPreset = "yoga_preset"; 
 
-  // --- VIDEO UPLOAD FUNCTION ---
-  const handleVideoUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setUploading(true);
-    const data = new FormData();
-    data.append("file", file);
-    data.append("upload_preset", uploadPreset);
-    data.append("resource_type", "video"); // Zaruri hai video ke liye
-
-    try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
-            method: "POST",
-            body: data
-        });
-        const urlData = await res.json();
-        
-        if(urlData.secure_url) {
-            setFormData(prev => ({ ...prev, videoLink: urlData.secure_url }));
-            toast.success("Video Uploaded Successfully!");
-        } else {
-            toast.error("Failed to get video URL.");
-        }
-    } catch (error) {
-        console.error("Upload Error:", error);
-        toast.error("Video upload failed.");
-    } finally {
-        setUploading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.videoLink) {
-        return toast.warning("Please upload a video first!");
-    }
-
-    setLoading(true);
-    // Baki sab same rahega, kyunki backend bas URL expect karta hai
-    const classData = {
-        ...formData,
-        price: parseFloat(formData.price),
-        availableSeats: parseInt(formData.availableSeats)
+    const handleBasicChange = (e) => {
+        setBasicInfo({ ...basicInfo, [e.target.name]: e.target.value });
     };
 
-    try {
-      const res = await api.post('/new-class', classData);
-      if (res.data.insertedId) {
-        toast.success("Class Added! Waiting for Approval.");
-        // Reset Logic...
-        setFormData({ ...formData, name: '', image: '', price: '', description: '', videoLink: '', availableSeats: '' });
-      }
-    } catch (error) {
-      toast.error("Failed to add class.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // --- CHAPTER HANDLING ---
+    const addChapter = () => {
+        setChapters([...chapters, { title: '', description: '', videoUrl: '', videoFile: null, isFree: false }]);
+    };
 
-  return (
-    <div className="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-100">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New Class</h2>
+    const removeChapter = (index) => {
+        const newChapters = chapters.filter((_, i) => i !== index);
+        setChapters(newChapters);
+    };
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        
-        {/* Name */}
-        <div>
-          <label className="block text-gray-700 font-semibold mb-2">Class Name</label>
-          <input type="text" name="name" required value={formData.name} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg" />
-        </div>
+    const handleChapterChange = (index, field, value) => {
+        const newChapters = [...chapters];
+        newChapters[index][field] = value;
+        setChapters(newChapters);
+    };
 
-        {/* Image */}
-        <div>
-          <label className="block text-gray-700 font-semibold mb-2">Image URL (Poster)</label>
-          <input type="text" name="image" required value={formData.image} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg" />
-        </div>
+    // --- UPLOAD HELPER FUNCTION ---
+    const uploadToCloudinary = async (file) => {
+        const data = new FormData();
+        data.append("file", file);
+        data.append("upload_preset", uploadPreset);
+        data.append("resource_type", "video");
 
-        {/* --- VIDEO UPLOAD INPUT --- */}
-        <div>
-            <label className="block text-gray-700 font-semibold mb-2">Upload Class Video</label>
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+            method: "POST", body: data
+        });
+        const urlData = await res.json();
+        return urlData.secure_url;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+
+        try {
+            // 1. Upload Preview Video (Trailer)
+            let previewUrl = basicInfo.previewVideo; // Agar URL dala hai
+            const previewFile = document.getElementById('previewFile').files[0];
             
-            {uploading ? (
-                <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
-                    <Loader className="animate-spin" /> Uploading Video... Please wait.
+            if (previewFile) {
+                toast.info("Uploading Preview Video...");
+                previewUrl = await uploadToCloudinary(previewFile);
+            }
+
+            // 2. Upload All Chapter Videos
+            const finalChapters = await Promise.all(chapters.map(async (chapter, index) => {
+                let videoUrl = chapter.videoUrl;
+                if (chapter.videoFile) {
+                    toast.info(`Uploading Chapter ${index + 1} Video...`);
+                    videoUrl = await uploadToCloudinary(chapter.videoFile);
+                }
+                return {
+                    title: chapter.title,
+                    description: chapter.description,
+                    video: videoUrl,
+                    isFree: index === 0 ? true : false // Logic: 1st is always free, others locked
+                };
+            }));
+
+            // 3. Send to Backend
+            const classData = {
+                ...basicInfo,
+                price: parseFloat(basicInfo.price),
+                availableSeats: parseInt(basicInfo.availableSeats),
+                previewVideo: previewUrl,
+                chapters: finalChapters,
+                instructorName: user?.name,
+                instructorEmail: user?.email,
+                status: 'pending',
+                totalEnrolled: 0
+            };
+
+            const res = await api.post('/new-class', classData);
+            if (res.data.insertedId) {
+                toast.success("Class & Chapters Added Successfully!");
+                // Reset Form logic here...
+            }
+
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to add class. Check console.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 my-10">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Create New Course</h2>
+            <form onSubmit={handleSubmit} className="space-y-8">
+                
+                {/* --- SECTION 1: BASIC INFO --- */}
+                <div className="space-y-4">
+                    <h3 className="font-bold text-lg text-green-600 border-b pb-2">1. Basic Information</h3>
+                    <input type="text" name="name" placeholder="Class Title" required onChange={handleBasicChange} className="w-full p-3 border rounded-lg" />
+                    <input type="text" name="image" placeholder="Cover Image URL" required onChange={handleBasicChange} className="w-full p-3 border rounded-lg" />
+                    <textarea name="description" rows="3" placeholder="Course Description" required onChange={handleBasicChange} className="w-full p-3 border rounded-lg"></textarea>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <input type="number" name="price" placeholder="Price ($)" required onChange={handleBasicChange} className="w-full p-3 border rounded-lg" />
+                        <input type="number" name="availableSeats" placeholder="Seats" required onChange={handleBasicChange} className="w-full p-3 border rounded-lg" />
+                    </div>
+
+                    {/* Preview Video Upload */}
+                    <div>
+                        <label className="block font-semibold mb-2 text-sm text-gray-600">Course Trailer (Free Preview for Everyone)</label>
+                        <input type="file" id="previewFile" accept="video/*" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" />
+                    </div>
                 </div>
-            ) : (
-                <div className="flex gap-4">
-                    <input 
-                        type="file" 
-                        accept="video/*" 
-                        onChange={handleVideoUpload}
-                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                    />
+
+                {/* --- SECTION 2: CHAPTERS (Curriculum) --- */}
+                <div className="space-y-4">
+                    <h3 className="font-bold text-lg text-green-600 border-b pb-2">2. Course Curriculum (Chapters)</h3>
+                    
+                    {chapters.map((chapter, index) => (
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                            <div className="absolute top-2 right-2">
+                                {chapters.length > 1 && (
+                                    <button type="button" onClick={() => removeChapter(index)} className="text-red-500 hover:text-red-700"><Trash2 size={20}/></button>
+                                )}
+                            </div>
+                            <h4 className="font-bold text-gray-700 mb-3">Chapter {index + 1} {index === 0 && <span className="text-xs bg-green-200 text-green-800 px-2 py-1 rounded ml-2">FREE</span>}</h4>
+                            
+                            <div className="grid gap-3">
+                                <input 
+                                    type="text" 
+                                    placeholder="Chapter Title" 
+                                    value={chapter.title} 
+                                    onChange={(e) => handleChapterChange(index, 'title', e.target.value)} 
+                                    className="w-full p-2 border rounded" required
+                                />
+                                <textarea 
+                                    placeholder="Chapter Description" 
+                                    value={chapter.description} 
+                                    onChange={(e) => handleChapterChange(index, 'description', e.target.value)} 
+                                    className="w-full p-2 border rounded" required
+                                ></textarea>
+                                
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1">
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">Upload Chapter Video</label>
+                                        <input 
+                                            type="file" 
+                                            accept="video/*"
+                                            onChange={(e) => handleChapterChange(index, 'videoFile', e.target.files[0])}
+                                            className="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:bg-white file:text-green-600"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+
+                    <button type="button" onClick={addChapter} className="flex items-center gap-2 text-green-700 font-bold hover:bg-green-50 px-4 py-2 rounded-lg transition">
+                        <Plus size={20} /> Add New Chapter
+                    </button>
                 </div>
-            )}
-            
-            {/* Show link if uploaded */}
-            {formData.videoLink && !uploading && (
-                <p className="text-xs text-green-600 mt-2">✓ Video attached successfully.</p>
-            )}
-        </div>
 
-        {/* Price & Seats */}
-        <div className="grid md:grid-cols-2 gap-6">
-            <div>
-                <label className="block text-gray-700 font-semibold mb-2">Price ($)</label>
-                <input type="number" name="price" required value={formData.price} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg" />
-            </div>
-            <div>
-                <label className="block text-gray-700 font-semibold mb-2">Available Seats</label>
-                <input type="number" name="availableSeats" required value={formData.availableSeats} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg" />
-            </div>
+                {/* Submit */}
+                <button disabled={loading} className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold hover:bg-green-600 transition shadow-lg flex justify-center items-center gap-2">
+                    {loading ? <><Loader className="animate-spin"/> Uploading & Saving...</> : "Submit Course for Approval"}
+                </button>
+            </form>
         </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-gray-700 font-semibold mb-2">Description</label>
-          <textarea name="description" rows="4" required value={formData.description} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg"></textarea>
-        </div>
-
-        <button 
-          type="submit" 
-          disabled={loading || uploading}
-          className={`w-full py-3 rounded-lg font-bold text-white transition ${loading || uploading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'}`}
-        >
-          {loading ? 'Submitting...' : 'Add Class'}
-        </button>
-      </form>
-    </div>
-  );
+    );
 };
 
 export default AddClass;

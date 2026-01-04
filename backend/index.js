@@ -4,7 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.PAYMENT_SECRET);
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs'); // Security ke liye
+const bcrypt = require('bcryptjs'); 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const port = process.env.PORT || 5000;
@@ -136,14 +136,15 @@ async function run() {
         // 2. PUBLIC ROUTES (INSTRUCTORS & CLASSES)
         // =========================================================================
 
-        // **FIXED ROUTE: Get All Instructors**
         app.get('/instructors', async (req, res) => {
             const result = await userCollection.find({ role: 'instructor' }).toArray();
             res.send(result);
         });
 
+        // --- FIXED: Only Count Enrollements from Approved Classes ---
         app.get('/popular-instructors', async (req, res) => {
             const pipeline = [
+                { $match: { status: 'approved' } }, // FIX: Filter added
                 { $group: { _id: "$instructorEmail", totalEnrolled: { $sum: "$totalEnrolled" } } },
                 { $lookup: { from: "users", localField: "_id", foreignField: "email", as: "instructor" } },
                 { $match: { "instructor": { $ne: [] } } },
@@ -161,8 +162,10 @@ async function run() {
             res.send(result);
         });
 
+        // --- FIXED: Only Show Approved Classes in Popular Section ---
         app.get('/popular_classes', async (req, res) => {
-            const result = await classesCollection.find().sort({ totalEnrolled: -1 }).limit(6).toArray();
+            const query = { status: 'approved' }; // FIX: Filter added
+            const result = await classesCollection.find(query).sort({ totalEnrolled: -1 }).limit(6).toArray();
             res.send(result);
         });
 
@@ -260,11 +263,14 @@ async function run() {
         });
 
         // =========================================================================
-        // 5. CLASS MANAGEMENT (INSTRUCTOR & ADMIN)
+        // 5. CLASS MANAGEMENT (UPDATED FOR CHAPTERS & PREVIEW VIDEO)
         // =========================================================================
 
         app.post('/new-class', verifyJWT, verifyInstructor, async (req, res) => {
             const newClass = req.body;
+            // Ensure status is pending when created
+            newClass.status = 'pending'; 
+            // `chapters` and `previewVideo` will be saved automatically as they are in req.body
             const result = await classesCollection.insertOne(newClass);
             res.send(result);
         });
@@ -290,6 +296,7 @@ async function run() {
             res.send(result);
         });
 
+        // --- UPDATED: Handles Chapters & Preview Video ---
         app.put('/update-class/:id', verifyJWT, verifyInstructor, async (req, res) => {
             const id = req.params.id;
             const updateClass = req.body;
@@ -299,9 +306,15 @@ async function run() {
                     name: updateClass.name,
                     description: updateClass.description,
                     price: updateClass.price,
+                    image: updateClass.image, 
                     availableSeats: parseInt(updateClass.availableSeats),
-                    videoLink: updateClass.videoLink,
-                    status: 'pending'
+                    
+                    // NEW FIELDS SUPPORT:
+                    previewVideo: updateClass.previewVideo,
+                    chapters: updateClass.chapters,
+                    
+                    // Reset status to pending on update
+                    status: 'pending' 
                 }
             };
             const result = await classesCollection.updateOne(filter, updateDoc);
@@ -309,10 +322,10 @@ async function run() {
         });
         
         app.delete('/delete-class/:id', verifyJWT, verifyAdmin, async (req, res) => {
-             const id = req.params.id;
-             const query = { _id: new ObjectId(id) };
-             const result = await classesCollection.deleteOne(query);
-             res.send(result);
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await classesCollection.deleteOne(query);
+            res.send(result);
         });
 
         // =========================================================================
@@ -343,15 +356,31 @@ async function run() {
             res.send(result);
         });
 
+        // --- FIXED: Robust Payment Calculation ---
         app.post('/create-payment-intent', async (req, res) => {
-            const { price } = req.body;
-            const amount = parseInt(price) * 100;
-            const paymentIntent = await stripe.paymentIntents.create({
-                amount: amount,
-                currency: 'usd',
-                payment_method_types: ['card']
-            });
-            res.send({ clientSecret: paymentIntent.client_secret });
+            try {
+                const { price } = req.body;
+                
+                // Validation
+                if (!price || isNaN(price)) {
+                    console.error("Invalid Price Received:", price);
+                    return res.status(400).send({ message: "Invalid price provided" });
+                }
+
+                // Calculation: Handles decimals properly (e.g. 10.50 -> 1050 cents)
+                const amount = Math.round(parseFloat(price) * 100); 
+
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amount,
+                    currency: 'usd',
+                    payment_method_types: ['card']
+                });
+
+                res.send({ clientSecret: paymentIntent.client_secret });
+            } catch (error) {
+                console.error("Stripe Error:", error);
+                res.status(500).send({ message: error.message });
+            }
         });
 
         app.post('/payment-info', verifyJWT, async (req, res) => {

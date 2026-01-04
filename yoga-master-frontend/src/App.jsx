@@ -9,10 +9,10 @@ import Navbar from './components/Navbar';
 // Public Pages
 import Home from './pages/Home';
 import Classes from './pages/Classes';
-import Instructors from './pages/Instructors'; // Public Instructor List
+import Instructors from './pages/Instructors';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Teach from './pages/Teach'; // Apply to be Instructor
+import Teach from './pages/Teach';
 
 // User Pages
 import Cart from './pages/Cart';
@@ -23,7 +23,7 @@ import DashboardLayout from './pages/dashboard/DashboardLayout';
 import MyClasses from './pages/dashboard/MyClasses';
 import ClassDetails from './pages/dashboard/ClassDetails';
 import PaymentHistory from './pages/dashboard/PaymentHistory';
-import UserProfile from './pages/dashboard/UserProfile'; // <--- NEW PROFILE PAGE
+import UserProfile from './pages/dashboard/UserProfile';
 
 // Instructor Pages
 import InstructorHome from './pages/dashboard/InstructorHome';
@@ -60,6 +60,17 @@ const AdminRoute = ({ children }) => {
     return children;
 };
 
+// --- NEW: Dashboard Redirect Helper ---
+// Ye component role check karke sahi jagah bhejega
+const DashboardRedirect = () => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const role = user?.role;
+
+    if (role === 'admin') return <Navigate to="/dashboard/manage-users" replace />;
+    if (role === 'instructor') return <Navigate to="/dashboard/instructor-home" replace />;
+    return <Navigate to="/dashboard/my-classes" replace />;
+};
+
 function App() {
     return (
         <Router>
@@ -90,6 +101,9 @@ function App() {
                     {/* --- DASHBOARD SECTION --- */}
                     <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
                         
+                        {/* DEFAULT INDEX ROUTE (Role Based Redirect) */}
+                        <Route index element={<DashboardRedirect />} />
+
                         {/* Common for All Logged In Users */}
                         <Route path="user-profile" element={<UserProfile />} />
 

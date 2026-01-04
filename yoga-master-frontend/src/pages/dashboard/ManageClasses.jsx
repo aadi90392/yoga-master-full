@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import { toast } from 'react-toastify';
-import { CheckCircle, XCircle, Trash2, Layers, Eye, X, Video } from 'lucide-react';
+import { CheckCircle, AlertCircle, Trash2, Layers, Eye, X, Video, PlayCircle, Lock, Unlock } from 'lucide-react';
 
 const ManageClasses = () => {
     const [classes, setClasses] = useState([]);
@@ -9,7 +9,8 @@ const ManageClasses = () => {
     const [activeTab, setActiveTab] = useState('pending'); 
     
     // --- MODAL STATE ---
-    const [selectedClass, setSelectedClass] = useState(null); // Agar ye null nahi hai, to Modal dikhega
+    const [selectedClass, setSelectedClass] = useState(null); 
+    const [activeVideo, setActiveVideo] = useState(null); // To switch between trailer/chapters inside modal
 
     const fetchClasses = async () => {
         try {
@@ -27,6 +28,13 @@ const ManageClasses = () => {
         fetchClasses();
     }, []);
 
+    // Open Modal Logic
+    const handleViewDetails = (cls) => {
+        setSelectedClass(cls);
+        // Default video: Preview Video OR First Chapter OR Legacy videoLink
+        setActiveVideo(cls.previewVideo || cls.chapters?.[0]?.video || cls.videoLink);
+    };
+
     const handleStatusChange = async (id, newStatus) => {
         try {
             await api.patch(`/change-status/${id}`, { status: newStatus });
@@ -36,9 +44,7 @@ const ManageClasses = () => {
                 cls._id === id ? { ...cls, status: newStatus } : cls
             ));
 
-            // Agar Modal khula hai to band kar do
             setSelectedClass(null); 
-
             const msg = newStatus === 'approved' ? "Class Approved & Live!" : "Class Rejected.";
             toast.success(msg);
         } catch (error) {
@@ -105,9 +111,8 @@ const ManageClasses = () => {
                             </div>
 
                             <div className="flex gap-3 w-full md:w-auto">
-                                {/* IMPORTANT: View Details Button */}
                                 <button 
-                                    onClick={() => setSelectedClass(cls)}
+                                    onClick={() => handleViewDetails(cls)}
                                     className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-gray-200 transition flex items-center justify-center gap-2"
                                 >
                                     <Eye size={18} /> View & Verify
@@ -128,72 +133,101 @@ const ManageClasses = () => {
                 )}
             </div>
 
-            {/* --- VERIFICATION MODAL (The Main Feature) --- */}
+            {/* --- VERIFICATION MODAL --- */}
             {selectedClass && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-3xl rounded-2xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
+                    <div className="bg-white w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
                         
                         {/* Modal Header */}
                         <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                             <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                                <Video size={20} className="text-green-600"/> Review Class Content
+                                <Video size={20} className="text-green-600"/> Review: {selectedClass.name}
                             </h3>
                             <button onClick={() => setSelectedClass(null)} className="text-gray-500 hover:text-red-500 transition">
                                 <X size={24} />
                             </button>
                         </div>
 
-                        {/* Modal Body (Scrollable) */}
-                        <div className="p-6 overflow-y-auto">
-                            {/* 1. Video Player for Verification */}
-                            <div className="aspect-video bg-black rounded-xl overflow-hidden mb-6 relative group">
-                                <video 
-                                    src={selectedClass.videoLink} 
-                                    controls 
-                                    className="w-full h-full object-contain"
-                                    poster={selectedClass.image}
-                                >
-                                    Your browser does not support the video tag.
-                                </video>
-                            </div>
-
-                            {/* 2. Details */}
-                            <div className="grid md:grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <p className="text-xs text-gray-400 uppercase font-bold">Class Name</p>
-                                    <p className="font-bold text-gray-800 text-lg">{selectedClass.name}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 uppercase font-bold">Instructor</p>
-                                    <p className="font-bold text-gray-800">{selectedClass.instructorName}</p>
-                                    <p className="text-sm text-gray-500">{selectedClass.instructorEmail}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 uppercase font-bold">Pricing</p>
-                                    <p className="font-bold text-green-600 text-lg">${selectedClass.price}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-400 uppercase font-bold">Seats Available</p>
-                                    <p className="font-bold text-gray-800">{selectedClass.availableSeats}</p>
-                                </div>
-                            </div>
-
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto grid lg:grid-cols-2 gap-8">
+                            
+                            {/* Left: Video Player */}
                             <div>
-                                <p className="text-xs text-gray-400 uppercase font-bold mb-1">Description</p>
-                                <p className="text-gray-600 text-sm leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                    {selectedClass.description}
-                                </p>
+                                <div className="aspect-video bg-black rounded-xl overflow-hidden mb-4 relative group shadow-lg">
+                                    <video 
+                                        key={activeVideo} // Reload on change
+                                        src={activeVideo} 
+                                        controls 
+                                        className="w-full h-full object-contain"
+                                        poster={selectedClass.image}
+                                    >
+                                        Your browser does not support the video tag.
+                                    </video>
+                                </div>
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-700">
+                                    <strong>Instructor Note:</strong> {selectedClass.description}
+                                </div>
+                            </div>
+
+                            {/* Right: Chapter List */}
+                            <div>
+                                <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    <Layers size={18}/> Course Curriculum
+                                </h4>
+                                
+                                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                    {/* Preview Video Option */}
+                                    <div 
+                                        onClick={() => setActiveVideo(selectedClass.previewVideo)}
+                                        className={`p-3 rounded-lg border cursor-pointer transition flex items-center gap-3
+                                            ${activeVideo === selectedClass.previewVideo ? 'bg-green-50 border-green-500' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                                    >
+                                        <PlayCircle size={20} className="text-green-600"/>
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-800">Course Trailer</p>
+                                            <p className="text-xs text-gray-500">Free Preview</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Chapters */}
+                                    {selectedClass.chapters?.length > 0 ? (
+                                        selectedClass.chapters.map((ch, i) => (
+                                            <div 
+                                                key={i} 
+                                                onClick={() => setActiveVideo(ch.video)}
+                                                className={`p-3 rounded-lg border cursor-pointer transition flex items-center gap-3
+                                                    ${activeVideo === ch.video ? 'bg-green-50 border-green-500' : 'bg-white border-gray-200 hover:bg-gray-50'}`}
+                                            >
+                                                <div className="bg-gray-100 p-2 rounded-full text-gray-600">
+                                                    {i+1}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-gray-800 line-clamp-1">{ch.title}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        {ch.isFree ? 
+                                                            <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded flex items-center gap-1"><Unlock size={10}/> Free</span> : 
+                                                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded flex items-center gap-1"><Lock size={10}/> Paid</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                                <PlayCircle size={18} className="text-gray-400 hover:text-green-600"/>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-gray-400 italic">No chapters added (Single Video Course).</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Modal Footer (Actions) */}
-                        {selectedClass.status === 'pending' && (
+                        {/* Modal Footer */}
+                        {selectedClass.status === 'pending' ? (
                             <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-4 justify-end">
                                 <button 
                                     onClick={() => handleStatusChange(selectedClass._id, 'denied')}
                                     className="px-6 py-2 rounded-lg font-bold text-red-600 hover:bg-red-100 border border-transparent hover:border-red-200 transition"
                                 >
-                                    Reject Request
+                                    Reject
                                 </button>
                                 <button 
                                     onClick={() => handleStatusChange(selectedClass._id, 'approved')}
@@ -202,24 +236,14 @@ const ManageClasses = () => {
                                     <CheckCircle size={18} /> Approve & Publish
                                 </button>
                             </div>
+                        ) : (
+                            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                                <button onClick={() => setSelectedClass(null)} className="px-6 py-2 rounded-lg font-bold text-gray-600 hover:bg-gray-200 transition">Close</button>
+                            </div>
                         )}
-                        
-                        {/* Agar already approved hai, to sirf Close button dikhao */}
-                        {selectedClass.status === 'approved' && (
-                             <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
-                                 <button 
-                                    onClick={() => setSelectedClass(null)}
-                                    className="px-6 py-2 rounded-lg font-bold text-gray-600 hover:bg-gray-200 transition"
-                                >
-                                    Close
-                                </button>
-                             </div>
-                        )}
-
                     </div>
                 </div>
             )}
-
         </div>
     );
 };
